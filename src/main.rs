@@ -168,17 +168,29 @@ fn load_textures(mut commands: Commands, server: Res<AssetServer>,
         moving_three: mario_moving_three_index,
     });
 
-    let handle_blocks: Handle<Image> = server.load("images/items_bricks.png");
+    let handle_blocks: Handle<Image> = server.load("images/tileset.png");
     let mut atlas = TextureAtlas::new_empty(handle_blocks, Vec2 { x: 448., y: 256. });
-    let brick_index = atlas.add_texture(Rect { min: Vec2 { x: 272., y: 112. }, max: Vec2 { x: 288., y: 128. } });
+    let ground_brick_index = atlas.add_texture(Rect { min: Vec2 { x: 0., y: 16. }, max: Vec2 { x: 16., y: 32. } });
+    let brick_index = atlas.add_texture(Rect { min: Vec2 { x: 34., y: 16. }, max: Vec2 { x: 50., y: 32. } });
+    let bonus_block_index = atlas.add_texture(Rect { min: Vec2 { x: 298., y: 78. }, max: Vec2 { x: 314., y: 94. } });
     let handle_blocks_atlas = texture_atlases.add(atlas);
 
     commands.insert_resource(BlockTexturesIndex {
-        brick: brick_index
+        ground_brick: ground_brick_index,
+        brick: brick_index,
+        bonus_block: bonus_block_index
     });
     let mut blocks_textures = BlockTexture {textures: HashMap::new()};
-    blocks_textures.textures.insert(0, brick_index);
+    blocks_textures.textures.insert(0, ground_brick_index);
+    blocks_textures.textures.insert(1, brick_index);
+    blocks_textures.textures.insert(2, bonus_block_index);
 
+    let window = match windows.get_primary() {
+        None => {panic!("no primary")}
+        Some(w) => w
+    };
+    let x_base = -1 * (window.width() as i32 / 2);
+    let y_base = -1 * (window.height() as i32 / 2);
     // commands.insert_resource(atlas);
     commands.spawn_bundle(Mario {
         size: MarioSize { big: false },
@@ -196,7 +208,8 @@ fn load_textures(mut commands: Commands, server: Res<AssetServer>,
         }*/
     }).insert_bundle(SpriteSheetBundle {
         transform: Transform {
-            // scale: Vec3::new(5., 5., 0.),
+            scale: Vec3::new(2., 2., 1.),
+            translation: Vec3::new((x_base + 2 * 32 + 30) as f32, (y_base + 2 * 32 + 13) as f32, 0.),
             ..default()
         },
         sprite: TextureAtlasSprite::new(mario_standing_index),
@@ -219,23 +232,17 @@ fn load_textures(mut commands: Commands, server: Res<AssetServer>,
     })*/.insert(Player)
         .insert(AnimationTimer(Timer::from_seconds(0.1, true)));
 
-    let window = match windows.get_primary() {
-        None => {panic!("no primary")}
-        Some(w) => w
-    };
-    let x_base = -1 * (window.width() as i32 / 2);
-    let y_base = -1 * (window.height() as i32 / 2);
 
     let level_one = level::loader::load("assets/levels/level1.txt").unwrap();
     for block in level_one.blocks {
         let index = blocks_textures.textures.get(&block.id);
         let index = match index {
             Some(i) => i,
-            None => continue
+            None => { println!("No index is linked to the block id '{}'", &block.id); continue; }
         };
         commands.spawn_bundle(SpriteSheetBundle {
             transform: Transform {
-                translation: Vec3::new((x_base + block.x as i32 * 32 + 16) as f32, (y_base + block.y as i32 * 32 + 13)  as f32, 0.),
+                translation: Vec3::new((x_base + block.x as i32 * 32 + 12) as f32, (y_base + block.y as i32 * 32 + 13)  as f32, 0.),
                 scale: Vec3::new(2., 2., 1.),
                 ..default()
             },
